@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply font-sans;
+}
+
+/* In a global CSS file or your module CSS */
+.picker-column {
+  /* This will need careful styling for the 3D effect */
+  perspective: 1000px; /* Important for 3D */
+  height: 100%;
+  overflow: hidden; /* Hide scrollbars, manage scrolling with JS */
+  position: relative;
+  width: 30%; /* Adjust as needed */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.picker-item {
+  /* Basic styling for each date/month/year item */
+  padding: 8px 0;
+  font-size: 16px;
+  color: #888;
+  transition: all 0.2s ease-in-out;
+  /* For the cylindrical effect, you'd use transform: rotateX() */
+  /* and adjust based on scroll position */
+}
+
+.picker-item.selected {
+  font-weight: bold;
+  color: #222222;
+  font-size: 20px; /* Make selected item larger */
+}

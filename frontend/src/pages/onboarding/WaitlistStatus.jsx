@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { userAPI } from '../utils/api';
+import { userAPI } from '../../utils/api';
 
 export default function WaitlistStatus() {
   const navigate = useNavigate();

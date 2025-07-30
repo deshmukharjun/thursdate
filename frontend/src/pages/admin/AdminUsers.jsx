@@ -1,25 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { adminAPI } from '../utils/api';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { adminAPI } from '../../utils/api';
 
-export default function AdminWaitlist() {
+export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [approving, setApproving] = useState(false);
+  const [filter, setFilter] = useState('all'); // all, approved, pending
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    fetchWaitlist();
+    // Set filter from navigation state if provided (only on mount)
+    if (location.state && location.state.filter && ['all', 'approved', 'pending'].includes(location.state.filter)) {
+      setFilter(location.state.filter);
+    }
+    fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchWaitlist = async () => {
+  const fetchUsers = async () => {
     try {
       setLoading(true);
       setError('');
-      const data = await adminAPI.getWaitlist();
+      const data = await adminAPI.getAllUsers();
       setUsers(data.users);
     } catch (err) {
       setError(err.message);
@@ -30,7 +37,6 @@ export default function AdminWaitlist() {
 
   const handleApprove = async (userId, approved) => {
     try {
-      setApproving(true);
       await adminAPI.updateUserApproval(userId, approved);
       
       // Update local state
@@ -45,13 +51,8 @@ export default function AdminWaitlist() {
         setShowUserModal(false);
         setSelectedUser(null);
       }
-      
-      // Refresh the list
-      fetchWaitlist();
     } catch (err) {
       setError(err.message);
-    } finally {
-      setApproving(false);
     }
   };
 
@@ -75,6 +76,20 @@ export default function AdminWaitlist() {
     });
   };
 
+  // Filter and search users
+  const filteredUsers = users.filter(user => {
+    const matchesFilter = filter === 'all' || 
+      (filter === 'approved' && user.approval) ||
+      (filter === 'pending' && !user.approval);
+    
+    const matchesSearch = searchTerm === '' || 
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.firstName && user.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (user.lastName && user.lastName.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    return matchesFilter && matchesSearch;
+  });
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col bg-white font-sans">
@@ -84,7 +99,7 @@ export default function AdminWaitlist() {
               <img src="/backarrow.svg" alt="Back" width={24} height={24} />
             </button>
             <div className="text-gray-400 text-[14px] font-semibold mx-auto">
-              Waitlist Management
+              All Users
             </div>
             <div style={{ width: 24 }}></div>
           </div>
@@ -105,7 +120,7 @@ export default function AdminWaitlist() {
             <img src="/backarrow.svg" alt="Back" width={24} height={24} />
           </button>
           <div className="text-gray-400 text-[14px] font-semibold mx-auto">
-            Waitlist Management
+            All Users
           </div>
           <div style={{ width: 24 }}></div>
         </div>
@@ -116,8 +131,8 @@ export default function AdminWaitlist() {
         <div className="max-w-md mx-auto w-full pt-4">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-xl font-bold mb-2">Pending Approvals</h1>
-            <p className="text-gray-600 text-sm">{users.length} users waiting for approval</p>
+            <h1 className="text-xl font-bold mb-2">User Management</h1>
+            <p className="text-gray-600 text-sm">{filteredUsers.length} of {users.length} users</p>
           </div>
 
           {error && (
@@ -126,15 +141,63 @@ export default function AdminWaitlist() {
             </div>
           )}
 
+          {/* Filters */}
+          <div className="mb-4 space-y-3">
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            
+            {/* Filter Tabs */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  filter === 'all' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All ({users.length})
+              </button>
+              <button
+                onClick={() => setFilter('approved')}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  filter === 'approved' 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Approved ({users.filter(u => u.approval).length})
+              </button>
+              <button
+                onClick={() => setFilter('pending')}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  filter === 'pending' 
+                    ? 'bg-yellow-500 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Pending ({users.filter(u => !u.approval).length})
+              </button>
+            </div>
+          </div>
+
           {/* Users List */}
           <div className="space-y-4">
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-gray-400 text-lg mb-2">No pending approvals</div>
-                <div className="text-gray-300 text-sm">All users have been reviewed</div>
+                <div className="text-gray-400 text-lg mb-2">No users found</div>
+                <div className="text-gray-300 text-sm">
+                  {searchTerm ? 'Try adjusting your search' : 'No users match the current filter'}
+                </div>
               </div>
             ) : (
-              users.map(user => (
+              filteredUsers.map(user => (
                 <div key={user.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   {/* User Header */}
                   <div className="flex items-center gap-3 mb-3">
@@ -159,6 +222,13 @@ export default function AdminWaitlist() {
                         }
                       </div>
                       <div className="text-sm text-gray-500">{user.email}</div>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs ${
+                      user.approval 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {user.approval ? 'Approved' : 'Pending'}
                     </div>
                   </div>
 
@@ -215,20 +285,21 @@ export default function AdminWaitlist() {
                     >
                       View Details
                     </button>
-                    <button
-                      onClick={() => handleApprove(user.id, true)}
-                      disabled={approving}
-                      className="flex-1 px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
-                    >
-                      {approving ? 'Approving...' : 'Approve'}
-                    </button>
-                    <button
-                      onClick={() => handleApprove(user.id, false)}
-                      disabled={approving}
-                      className="flex-1 px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-                    >
-                      {approving ? 'Rejecting...' : 'Reject'}
-                    </button>
+                    {!user.approval ? (
+                      <button
+                        onClick={() => handleApprove(user.id, true)}
+                        className="flex-1 px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                      >
+                        Approve
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleApprove(user.id, false)}
+                        className="flex-1 px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        Revoke
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -283,6 +354,13 @@ export default function AdminWaitlist() {
                     }
                   </div>
                   <div className="text-gray-500">{selectedUser.email}</div>
+                  <div className={`inline-block px-2 py-1 rounded-full text-xs mt-2 ${
+                    selectedUser.approval 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {selectedUser.approval ? 'Approved' : 'Pending Approval'}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -333,20 +411,21 @@ export default function AdminWaitlist() {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4">
-                <button
-                  onClick={() => handleApprove(selectedUser.id, true)}
-                  disabled={approving}
-                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
-                >
-                  {approving ? 'Approving...' : 'Approve User'}
-                </button>
-                <button
-                  onClick={() => handleApprove(selectedUser.id, false)}
-                  disabled={approving}
-                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-                >
-                  {approving ? 'Rejecting...' : 'Reject User'}
-                </button>
+                {!selectedUser.approval ? (
+                  <button
+                    onClick={() => handleApprove(selectedUser.id, true)}
+                    className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    Approve User
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleApprove(selectedUser.id, false)}
+                    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Revoke Approval
+                  </button>
+                )}
               </div>
             </div>
           </div>

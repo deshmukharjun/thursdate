@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminAPI, authAPI } from '../utils/api';
+import { adminAPI, authAPI } from '../../utils/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={() => navigate('/admin/approved')}
+              onClick={() => navigate('/admin/users', { state: { filter: 'approved' } })}
               className="w-full bg-green-500 text-white p-4 rounded-xl text-left hover:bg-green-600 transition-colors"
             >
               <div className="flex items-center justify-between">

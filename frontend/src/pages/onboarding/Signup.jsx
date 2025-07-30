@@ -1,32 +1,21 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { authAPI, userAPI } from "../utils/api";
+import { authAPI } from "../../utils/api";
 
-export default function Login() {
+export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
-      await authAPI.login(email, password);
-      // Check if user profile exists
-      try {
-        const userData = await userAPI.getProfile();
-        if (userData.approval) {
-          navigate("/home");
-        } else {
-          navigate("/waitlist-status");
-        }
-      } catch (profileError) {
-        // If profile doesn't exist, go to user-info
-        navigate("/user-info");
-      }
+      await authAPI.register(email, password);
+      navigate("/user-info");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,8 +25,8 @@ export default function Login() {
 
   return (
     <div className="h-screen flex flex-col justify-center items-center bg-white">
-      <form className="w-full max-w-xs space-y-4" onSubmit={handleLogin}>
-        <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
+      <form className="w-full max-w-xs space-y-4" onSubmit={handleSignup}>
+        <h1 className="text-2xl font-bold mb-4 text-center">Sign Up</h1>
         <input
           type="email"
           placeholder="Email"
@@ -60,10 +49,10 @@ export default function Login() {
           className="w-full py-3 bg-black text-white rounded-xl font-medium"
           disabled={loading}
         >
-          {loading ? "Logging in..." : "Login"}
+          {loading ? "Signing up..." : "Sign Up"}
         </button>
         <div className="text-center text-sm mt-2">
-          Don't have an account? <Link to="/signup" className="text-blue-600">Sign Up</Link>
+          Already have an account? <Link to="/login" className="text-blue-600">Login</Link>
         </div>
       </form>
     </div>

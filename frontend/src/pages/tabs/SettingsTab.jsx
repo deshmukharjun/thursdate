@@ -1,12 +1,6 @@
-import { useState, useEffect } from "react";
+import { authAPI } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
-import HomeTab from "./HomeTab";
-import ExploreTab from "./ExploreTab";
-import MessagesTab from "./MessagesTab";
-import ProfileTab from "./ProfileTab";
-import GameTab from "./GameTab";
-import EditProfileTab from "./EditProfileTab";
-import SettingsTab from "./SettingsTab";
+import { useState } from "react";
 
 const navOptions = [
   { key: "matches", label: "Matches", icon: "/matches-icon.svg" },
@@ -16,53 +10,39 @@ const navOptions = [
   { key: "profile", label: "Profile", icon: "/profile-icon.svg" },
 ];
 
-export default function Home() {
-  const [selected, setSelected] = useState("matches");
+export default function SettingsTab() {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState("profile");
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    authAPI.logout();
+    navigate("/login");
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!window.confirm("Are you sure you want to delete your profile? This action cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      await authAPI.deleteAccount();
+      authAPI.logout();
+      navigate("/");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleBack = () => {
     navigate(-1);
   };
 
-  let ContentComponent;
-  switch (selected) {
-    case "matches":
-      ContentComponent = HomeTab; // Placeholder, replace with MatchesTab if available
-      break;
-    case "game":
-      ContentComponent = GameTab;
-      break;
-    case "discover":
-      ContentComponent = ExploreTab;
-      break;
-    case "chats":
-      ContentComponent = MessagesTab;
-      break;
-    case "profile":
-      // Nested routing for profile, edit-profile, and settings
-      ContentComponent = () => {
-        const [subTab, setSubTab] = useState("profile");
-        useEffect(() => {
-          // Listen to navigation events or implement your own logic to set subTab
-        }, []);
-        switch (window.location.pathname) {
-          case "/edit-profile":
-            return <EditProfileTab />;
-          case "/settings":
-            return <SettingsTab />;
-          default:
-            return <ProfileTab />;
-        }
-      };
-      break;
-    default:
-      ContentComponent = HomeTab;
-  }
-
   return (
     <div className="h-screen flex flex-col bg-white font-sans">
+      {/* Top Bar */}
       <div className="p-4 border-b">
-        {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <button onClick={handleBack} className="w-6 h-6 flex items-center justify-center">
             <img src="/backarrow.svg" alt="Back" width={24} height={24} />
@@ -73,8 +53,23 @@ export default function Home() {
           <div style={{ width: 24 }}></div>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto pb-20 px-4">
-        <ContentComponent />
+      {/* Settings Content */}
+      <div className="flex-1 overflow-y-auto pb-20 px-4 max-w-md mx-auto w-full">
+        <h2 className="text-xl font-semibold mb-6">Settings</h2>
+        {error && <div className="text-red-500 text-center mb-4">{error}</div>}
+        <button
+          className="w-full py-3 rounded-xl bg-black text-white font-semibold hover:bg-gray-800 transition mb-4"
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
+        <button
+          className="w-full py-3 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-700 transition"
+          onClick={handleDeleteProfile}
+          disabled={deleting}
+        >
+          {deleting ? "Deleting..." : "Delete Account"}
+        </button>
       </div>
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-sm flex justify-around items-center h-16">
@@ -109,4 +104,4 @@ export default function Home() {
       </nav>
     </div>
   );
-}
+} 

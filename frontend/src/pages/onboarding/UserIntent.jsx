@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Import useRef
 import { useNavigate } from 'react-router-dom';
-import { userAPI, uploadAPI } from '../utils/api';
+import { userAPI, uploadAPI } from '../../utils/api';
 
 const INTEREST_SUGGESTIONS = [
   'Travel', 'Food', 'Fitness', 'Music', 'Art', 'Tech', 'Books', 'Fashion', 'Outdoors', 'Sports', 'Gaming', 'Photography', 'Writing', 'Dancing', 'Cooking', 'Movies', 'TV Shows', 'Volunteering', 'Entrepreneurship', 'Wellness'

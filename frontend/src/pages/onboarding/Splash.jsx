@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authAPI, userAPI } from "../utils/api";
+import { authAPI, userAPI } from "../../utils/api";
 
 export default function Splash() {
   const navigate = useNavigate();

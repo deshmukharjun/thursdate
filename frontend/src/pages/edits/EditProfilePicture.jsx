@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadAPI, userAPI } from '../utils/api';
+import { uploadAPI, userAPI } from '../../utils/api';
 
 export default function EditProfilePicture() {
   const [currentImage, setCurrentImage] = useState(null);

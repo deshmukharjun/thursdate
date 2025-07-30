@@ -4,7 +4,7 @@ import {
   WheelPickerWrapper,
 } from "@ncdai/react-wheel-picker";
 import { useNavigate } from 'react-router-dom';
-import { authAPI, userAPI, uploadAPI } from '../utils/api';
+import { authAPI, userAPI, uploadAPI } from '../../utils/api';
 
 // Helper to get days in a month (handles leap years)
 const getDaysInMonth = (year, month) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { userAPI } from "../utils/api";
+import { userAPI } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 
 const navOptions = [

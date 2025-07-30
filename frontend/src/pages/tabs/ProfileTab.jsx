@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { userAPI } from "../utils/api";
+import { userAPI } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfileTab() {
@@ -24,8 +24,11 @@ export default function ProfileTab() {
     fetchUserInfo();
   }, []);
 
+  // Use lifestyle image as background if available
+  const bgUrl = userInfo && userInfo.intent && userInfo.intent.lifestyleImageUrls && userInfo.intent.lifestyleImageUrls.length > 0 && userInfo.intent.lifestyleImageUrls[0]
+    ? userInfo.intent.lifestyleImageUrls[0]
+    : "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
   // Placeholder images
-  const bgUrl = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
   const pfpUrl = "https://randomuser.me/api/portraits/men/32.jpg";
 
   // Helper to calculate age from dob

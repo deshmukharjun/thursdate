@@ -12,7 +12,7 @@
 ### Backend
 - **Node.js**
 - **Express.js**
-- **MongoDB** (via Mongoose ODM)
+- **MySQL** 
 
 ---
 
@@ -20,7 +20,7 @@
 
 ### Prerequisites
 - Node.js and npm installed
-- MongoDB installed or a cloud connection string (e.g., MongoDB Atlas)
+- MySQL installed
 
 ---
 

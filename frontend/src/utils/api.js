@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://thursdate-backend.onrender.com';
 
 // Helper function to get auth token from localStorage
 const getToken = () => localStorage.getItem('token');

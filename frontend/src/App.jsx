@@ -20,6 +20,15 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminWaitlist from "./pages/admin/AdminWaitlist";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AgePreference from "./pages/settings/AgePreferencePage";
+import GenderPreference from "./pages/settings/GenderPreferencePage";
+import DirectRequests from "./pages/settings/DirectRequestsPage";
+import PersonalImage from "./pages/settings/PersonalImagePage";
+import AccountPrivacy from "./pages/settings/AccountPrivacyPage";
+import BlockedAccounts from "./pages/settings/BlockedAccountsPage";
+import Membership from "./pages/settings/MembershipPage";
+import DevicePermissions from "./pages/settings/DevicePermissionsPage";
+
 import "@ncdai/react-wheel-picker/style.css";
 
 export default function App() {
@@ -50,7 +59,16 @@ export default function App() {
         <Route path="/admin/waitlist" element={<AdminWaitlist />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         
-        {/* Add more routes as needed */}
+        {/* Settings Routes */}
+        <Route path="/settings/age-preference" element={<AgePreference />} />
+        <Route path="/settings/gender-preference" element={<GenderPreference />} />
+        <Route path="/settings/direct-requests" element={<DirectRequests />} />
+        <Route path="/settings/personal-image" element={<PersonalImage />} />
+        <Route path="/settings/account-privacy" element={<AccountPrivacy />} />
+        <Route path="/settings/blocked-accounts" element={<BlockedAccounts />} />
+        <Route path="/settings/membership" element={<Membership />} />
+        <Route path="/settings/device-permissions" element={<DevicePermissions />} />
+
       </Routes>
     </Router>
   );

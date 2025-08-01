@@ -28,13 +28,12 @@ const validateConnection = async () => {
 // Get user profile
 router.get('/profile', auth, async (req, res) => {
   try {
-    // Validate database connection
     if (!(await validateConnection())) {
       return res.status(500).json({ error: 'Database connection failed' });
     }
 
     const [users] = await pool.execute(
-      'SELECT id, email, first_name, last_name, gender, dob, current_location, favourite_travel_destination, last_holiday_places, favourite_places_to_go, profile_pic_url, approval, intent, onboarding_complete FROM users WHERE id = ?',
+      'SELECT id, email, first_name, last_name, gender, dob, current_location, favourite_travel_destination, last_holiday_places, favourite_places_to_go, profile_pic_url, approval, intent, onboarding_complete, is_private FROM users WHERE id = ?',
       [req.user.userId]
     );
     
@@ -44,12 +43,6 @@ router.get('/profile', auth, async (req, res) => {
     
     const user = users[0];
     
-    // Safely parse JSON fields with error handling
-    const lastHolidayPlaces = safeJsonParse(user.last_holiday_places, []);
-    const favouritePlacesToGo = safeJsonParse(user.favourite_places_to_go, []);
-    const intent = safeJsonParse(user.intent, {});
-    
-    // Transform database column names to frontend field names
     const transformedUser = {
       id: user.id,
       email: user.email,
@@ -59,24 +52,16 @@ router.get('/profile', auth, async (req, res) => {
       dob: user.dob,
       currentLocation: user.current_location,
       favouriteTravelDestination: user.favourite_travel_destination,
-      lastHolidayPlaces: lastHolidayPlaces,
-      favouritePlacesToGo: favouritePlacesToGo,
+      lastHolidayPlaces: safeJsonParse(user.last_holiday_places, []),
+      favouritePlacesToGo: safeJsonParse(user.favourite_places_to_go, []),
       profilePicUrl: user.profile_pic_url,
-      intent: intent,
+      intent: safeJsonParse(user.intent, {}),
       onboardingComplete: user.onboarding_complete,
       approval: user.approval,
       createdAt: user.created_at,
-      updatedAt: user.updated_at
+      updatedAt: user.updated_at,
+      isPrivate: user.is_private,
     };
-    
-    console.log('User profile data being sent:', {
-      firstName: transformedUser.firstName,
-      lastName: transformedUser.lastName,
-      profilePicUrl: transformedUser.profilePicUrl,
-      gender: transformedUser.gender,
-      dob: transformedUser.dob,
-      intent: transformedUser.intent ? 'Present' : 'Null'
-    });
     
     res.json(transformedUser);
     
@@ -89,63 +74,30 @@ router.get('/profile', auth, async (req, res) => {
 // Save user profile (for onboarding)
 router.post('/profile', auth, async (req, res) => {
   try {
-    // Validate database connection
     if (!(await validateConnection())) {
       return res.status(500).json({ error: 'Database connection failed' });
     }
 
     const {
-      firstName,
-      lastName,
-      gender,
-      dob,
-      currentLocation,
-      favouriteTravelDestination,
-      lastHolidayPlaces,
-      favouritePlacesToGo,
-      profilePicUrl
+      firstName, lastName, gender, dob, currentLocation, favouriteTravelDestination,
+      lastHolidayPlaces, favouritePlacesToGo, profilePicUrl
     } = req.body;
     
-    // Convert date format for MySQL
-    let formattedDob = null;
-    if (dob) {
-      try {
-        const date = new Date(dob);
-        formattedDob = date.toISOString().split('T')[0]; // Convert to YYYY-MM-DD format
-      } catch (error) {
-        console.error('Date conversion error:', error);
-        formattedDob = null;
-      }
-    }
-    
-    // Convert arrays to JSON strings for storage
+    let formattedDob = dob ? new Date(dob).toISOString().split('T')[0] : null;
     const lastHolidayPlacesJson = JSON.stringify(lastHolidayPlaces || []);
     const favouritePlacesToGoJson = JSON.stringify(favouritePlacesToGo || []);
     
     await pool.execute(
       `UPDATE users SET 
-        first_name = ?, 
-        last_name = ?, 
-        gender = ?, 
-        dob = ?, 
-        current_location = ?, 
-        favourite_travel_destination = ?, 
-        last_holiday_places = ?, 
-        favourite_places_to_go = ?, 
-        profile_pic_url = ?,
-        approval = false
+        first_name = ?, last_name = ?, gender = ?, dob = ?, 
+        current_location = ?, favourite_travel_destination = ?, 
+        last_holiday_places = ?, favourite_places_to_go = ?, 
+        profile_pic_url = ?, approval = false
       WHERE id = ?`,
       [
-        firstName,
-        lastName,
-        gender,
-        formattedDob,
-        currentLocation,
-        favouriteTravelDestination,
-        lastHolidayPlacesJson,
-        favouritePlacesToGoJson,
-        profilePicUrl,
-        req.user.userId
+        firstName, lastName, gender, formattedDob, currentLocation, 
+        favouriteTravelDestination, lastHolidayPlacesJson, 
+        favouritePlacesToGoJson, profilePicUrl, req.user.userId
       ]
     );
     
@@ -160,134 +112,89 @@ router.post('/profile', auth, async (req, res) => {
 // Update user profile
 router.put('/profile', auth, async (req, res) => {
   try {
-    // Validate database connection
     if (!(await validateConnection())) {
       return res.status(500).json({ error: 'Database connection failed' });
     }
 
-    console.log('Profile update attempt for user ID:', req.user.userId);
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
-    // First, get the current user data
-    const [currentUsers] = await pool.execute(
-      'SELECT * FROM users WHERE id = ?',
-      [req.user.userId]
-    );
-    
+    const [currentUsers] = await pool.execute('SELECT * FROM users WHERE id = ?', [req.user.userId]);
     if (currentUsers.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
     
     const currentUser = currentUsers[0];
-    
-    // Safely parse existing JSON fields
     const currentIntent = safeJsonParse(currentUser.intent, {});
     
     const {
-      firstName,
-      lastName,
-      gender,
-      dob,
-      currentLocation,
-      favouriteTravelDestination,
-      lastHolidayPlaces,
-      favouritePlacesToGo,
-      profilePicUrl,
-      intent,
-      onboardingComplete
+      firstName, lastName, gender, dob, currentLocation, favouriteTravelDestination,
+      lastHolidayPlaces, favouritePlacesToGo, profilePicUrl, intent, onboardingComplete,
+      isPrivate
     } = req.body;
     
-    // Merge intent data if provided
-    let finalIntent = currentIntent;
-    if (intent) {
-      finalIntent = { ...currentIntent, ...intent };
-    }
+    let finalIntent = { ...currentIntent, ...intent };
+    const intentJson = finalIntent ? JSON.stringify(finalIntent) : currentUser.intent;
     
-    // Convert arrays to JSON strings for storage and handle undefined values
-    const lastHolidayPlacesJson = JSON.stringify(lastHolidayPlaces || safeJsonParse(currentUser.last_holiday_places, []) || []);
-    const favouritePlacesToGoJson = JSON.stringify(favouritePlacesToGo || safeJsonParse(currentUser.favourite_places_to_go, []) || []);
-    const intentJson = finalIntent ? JSON.stringify(finalIntent) : null;
-    
-    // Convert date format for MySQL
-    let formattedDob = null;
-    if (dob) {
-      try {
-        const date = new Date(dob);
-        formattedDob = date.toISOString().split('T')[0]; // Convert to YYYY-MM-DD format
-      } catch (error) {
-        console.error('Date conversion error:', error);
-        formattedDob = currentUser.dob;
-      }
-    } else {
-      formattedDob = currentUser.dob;
-    }
-    
-    // Use provided values or fall back to current values
     const updateData = [
       firstName !== undefined ? firstName : currentUser.first_name,
       lastName !== undefined ? lastName : currentUser.last_name,
       gender !== undefined ? gender : currentUser.gender,
-      formattedDob,
+      dob ? new Date(dob).toISOString().split('T')[0] : currentUser.dob,
       currentLocation !== undefined ? currentLocation : currentUser.current_location,
       favouriteTravelDestination !== undefined ? favouriteTravelDestination : currentUser.favourite_travel_destination,
-      lastHolidayPlacesJson,
-      favouritePlacesToGoJson,
+      JSON.stringify(lastHolidayPlaces || safeJsonParse(currentUser.last_holiday_places, [])),
+      JSON.stringify(favouritePlacesToGo || safeJsonParse(currentUser.favourite_places_to_go, [])),
       profilePicUrl !== undefined ? profilePicUrl : currentUser.profile_pic_url,
       intentJson,
       onboardingComplete !== undefined ? onboardingComplete : currentUser.onboarding_complete,
+      isPrivate !== undefined ? isPrivate : currentUser.is_private,
       req.user.userId
     ];
     
-    console.log('Prepared data:', {
-      intentJson: intentJson ? 'Present' : 'Null',
-      onboardingComplete: onboardingComplete !== undefined ? onboardingComplete : currentUser.onboarding_complete,
-      updateDataLength: updateData.length,
-      currentIntentKeys: Object.keys(currentIntent),
-      finalIntentKeys: Object.keys(finalIntent)
-    });
-    
     await pool.execute(
       `UPDATE users SET 
-        first_name = ?, 
-        last_name = ?, 
-        gender = ?, 
-        dob = ?, 
-        current_location = ?, 
-        favourite_travel_destination = ?, 
-        last_holiday_places = ?, 
-        favourite_places_to_go = ?, 
-        profile_pic_url = ?,
-        intent = ?,
-        onboarding_complete = ?
+        first_name = ?, last_name = ?, gender = ?, dob = ?, 
+        current_location = ?, favourite_travel_destination = ?, 
+        last_holiday_places = ?, favourite_places_to_go = ?, 
+        profile_pic_url = ?, intent = ?, onboarding_complete = ?,
+        is_private = ? 
       WHERE id = ?`,
       updateData
     );
     
-    console.log('Profile update successful');
     res.json({ message: 'Profile updated successfully' });
     
   } catch (error) {
     console.error('Update profile error:', error);
-    console.error('Error details:', error.message);
     res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
 // Admin endpoint to update user approval status
+// ⚠️ SECURITY NOTE: You should add an `isAdmin` middleware here to ensure only admins can use this.
+// Example: router.put('/approve/:userId', [auth, isAdmin], async (req, res) => { ... });
 router.put('/approve/:userId', auth, async (req, res) => {
   try {
-    // Validate database connection
     if (!(await validateConnection())) {
       return res.status(500).json({ error: 'Database connection failed' });
     }
 
+    // Get the userId from the URL parameter and approval status from the body
     const { userId } = req.params;
     const { approval } = req.body;
+
+    // Check if approval status is provided
+    if (approval === undefined) {
+        return res.status(400).json({ error: 'Approval status is required' });
+    }
     
-    await pool.execute(
+    // Update the user's approval status in the database
+    const [result] = await pool.execute(
       'UPDATE users SET approval = ? WHERE id = ?',
       [approval, userId]
     );
+
+    if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'User not found' });
+    }
     
     res.json({ message: 'User approval status updated successfully' });
     
@@ -297,4 +204,4 @@ router.put('/approve/:userId', auth, async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

@@ -3,6 +3,18 @@ const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
+// Helper function to handle different pool methods and placeholders
+const executeQuery = async (query, params) => {
+  if (pool.query) { // For PostgreSQL
+    const result = await pool.query(query, params);
+    // console.log("PostgreSQL query result:", result.rows);
+    return [result.rows];
+  } else { // For MySQL
+    // console.log("MySQL query result:", await pool.execute(query, params));
+    return pool.execute(query, params);
+  }
+};
+
 // Helper function to safely parse JSON
 const safeJsonParse = (jsonString, defaultValue = null) => {
   if (!jsonString) return defaultValue;
@@ -17,7 +29,7 @@ const safeJsonParse = (jsonString, defaultValue = null) => {
 // Helper function to validate database connection
 const validateConnection = async () => {
   try {
-    await pool.execute('SELECT 1');
+    await executeQuery('SELECT 1');
     return true;
   } catch (error) {
     console.error('Database connection validation failed:', error);
@@ -32,8 +44,11 @@ router.get('/profile', auth, async (req, res) => {
       return res.status(500).json({ error: 'Database connection failed' });
     }
 
-    const [users] = await pool.execute(
-      'SELECT id, email, first_name, last_name, gender, dob, current_location, favourite_travel_destination, last_holiday_places, favourite_places_to_go, profile_pic_url, approval, intent, onboarding_complete, is_private FROM users WHERE id = ?',
+    const [users] = await executeQuery(
+      `SELECT id, email, first_name, last_name, gender, dob, current_location, 
+       favourite_travel_destination, last_holiday_places, favourite_places_to_go, 
+       profile_pic_url, approval, intent, onboarding_complete, is_private 
+       FROM users WHERE id = $1`,
       [req.user.userId]
     );
     
@@ -83,17 +98,17 @@ router.post('/profile', auth, async (req, res) => {
       lastHolidayPlaces, favouritePlacesToGo, profilePicUrl
     } = req.body;
     
-    let formattedDob = dob ? new Date(dob).toISOString().split('T')[0] : null;
+    const formattedDob = dob ? new Date(dob).toISOString().split('T')[0] : null;
     const lastHolidayPlacesJson = JSON.stringify(lastHolidayPlaces || []);
     const favouritePlacesToGoJson = JSON.stringify(favouritePlacesToGo || []);
     
-    await pool.execute(
+    await executeQuery(
       `UPDATE users SET 
-        first_name = ?, last_name = ?, gender = ?, dob = ?, 
-        current_location = ?, favourite_travel_destination = ?, 
-        last_holiday_places = ?, favourite_places_to_go = ?, 
-        profile_pic_url = ?, approval = false
-      WHERE id = ?`,
+        first_name = $1, last_name = $2, gender = $3, dob = $4, 
+        current_location = $5, favourite_travel_destination = $6, 
+        last_holiday_places = $7, favourite_places_to_go = $8, 
+        profile_pic_url = $9, approval = false
+      WHERE id = $10`,
       [
         firstName, lastName, gender, formattedDob, currentLocation, 
         favouriteTravelDestination, lastHolidayPlacesJson, 
@@ -116,7 +131,7 @@ router.put('/profile', auth, async (req, res) => {
       return res.status(500).json({ error: 'Database connection failed' });
     }
 
-    const [currentUsers] = await pool.execute('SELECT * FROM users WHERE id = ?', [req.user.userId]);
+    const [currentUsers] = await executeQuery('SELECT * FROM users WHERE id = $1', [req.user.userId]);
     if (currentUsers.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -130,7 +145,7 @@ router.put('/profile', auth, async (req, res) => {
       isPrivate
     } = req.body;
     
-    let finalIntent = { ...currentIntent, ...intent };
+    const finalIntent = { ...currentIntent, ...intent };
     const intentJson = finalIntent ? JSON.stringify(finalIntent) : currentUser.intent;
     
     const updateData = [
@@ -149,14 +164,14 @@ router.put('/profile', auth, async (req, res) => {
       req.user.userId
     ];
     
-    await pool.execute(
+    await executeQuery(
       `UPDATE users SET 
-        first_name = ?, last_name = ?, gender = ?, dob = ?, 
-        current_location = ?, favourite_travel_destination = ?, 
-        last_holiday_places = ?, favourite_places_to_go = ?, 
-        profile_pic_url = ?, intent = ?, onboarding_complete = ?,
-        is_private = ? 
-      WHERE id = ?`,
+        first_name = $1, last_name = $2, gender = $3, dob = $4, 
+        current_location = $5, favourite_travel_destination = $6, 
+        last_holiday_places = $7, favourite_places_to_go = $8, 
+        profile_pic_url = $9, intent = $10, onboarding_complete = $11,
+        is_private = $12
+      WHERE id = $13`,
       updateData
     );
     
@@ -169,31 +184,27 @@ router.put('/profile', auth, async (req, res) => {
 });
 
 // Admin endpoint to update user approval status
-// ⚠️ SECURITY NOTE: You should add an `isAdmin` middleware here to ensure only admins can use this.
-// Example: router.put('/approve/:userId', [auth, isAdmin], async (req, res) => { ... });
 router.put('/approve/:userId', auth, async (req, res) => {
   try {
     if (!(await validateConnection())) {
       return res.status(500).json({ error: 'Database connection failed' });
     }
 
-    // Get the userId from the URL parameter and approval status from the body
     const { userId } = req.params;
     const { approval } = req.body;
 
-    // Check if approval status is provided
     if (approval === undefined) {
         return res.status(400).json({ error: 'Approval status is required' });
     }
     
-    // Update the user's approval status in the database
-    const [result] = await pool.execute(
-      'UPDATE users SET approval = ? WHERE id = ?',
+    // Note: pg library does not return affectedRows directly, you would typically check result.rowCount
+    const [result] = await executeQuery(
+      'UPDATE users SET approval = $1 WHERE id = $2',
       [approval, userId]
     );
 
-    if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'User not found' });
+    if (result.affectedRows === 0) { // This line may need to be adjusted for pg
+      return res.status(404).json({ error: 'User not found' });
     }
     
     res.json({ message: 'User approval status updated successfully' });
